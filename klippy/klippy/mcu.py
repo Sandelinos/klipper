@@ -4,7 +4,8 @@
 #
 # This file may be distributed under the terms of the GNU GPLv3 license.
 import sys, os, zlib, logging, math
-from . import serialhdl, msgproto, pins, chelper, clocksync
+from . import serialhdl, msgproto, pins, clocksync
+from .chelper import ffi as ffi_main, lib as ffi_lib
 
 class error(Exception):
     pass
@@ -179,7 +180,6 @@ class MCU_trsync:
         state_cmd = mcu.lookup_command(
             "trsync_state oid=%c can_trigger=%c trigger_reason=%c clock=%u")
         state_tag = state_cmd.get_command_tag()
-        ffi_main, ffi_lib = chelper.get_ffi()
         self._trdispatch_mcu = ffi_main.gc(ffi_lib.trdispatch_mcu_alloc(
             self._trdispatch, mcu._serial.get_serialqueue(), # XXX
             self._cmd_queue, self._oid, set_timeout_tag, trigger_tag,
@@ -213,7 +213,6 @@ class MCU_trsync:
         report_ticks = self._mcu.seconds_to_clock(expire_timeout * .3)
         report_clock = clock + int(report_ticks * report_offset + .5)
         min_extend_ticks = int(report_ticks * .8 + .5)
-        ffi_main, ffi_lib = chelper.get_ffi()
         ffi_lib.trdispatch_mcu_setup(self._trdispatch_mcu, clock, expire_clock,
                                      expire_ticks, min_extend_ticks)
         self._mcu.register_response(self._handle_trsync_state,
@@ -245,7 +244,6 @@ class TriggerDispatch:
     def __init__(self, mcu):
         self._mcu = mcu
         self._trigger_completion = None
-        ffi_main, ffi_lib = chelper.get_ffi()
         self._trdispatch = ffi_main.gc(ffi_lib.trdispatch_alloc(), ffi_lib.free)
         self._trsyncs = [MCU_trsync(mcu, self._trdispatch)]
     def get_oid(self):
@@ -281,7 +279,6 @@ class TriggerDispatch:
             trsync.start(print_time, report_offset,
                          self._trigger_completion, expire_timeout)
         etrsync = self._trsyncs[0]
-        ffi_main, ffi_lib = chelper.get_ffi()
         ffi_lib.trdispatch_start(self._trdispatch, etrsync.REASON_HOST_REQUEST)
         return self._trigger_completion
     def wait_end(self, end_time):
@@ -291,7 +288,6 @@ class TriggerDispatch:
             self._trigger_completion.complete(True)
         self._trigger_completion.wait()
     def stop(self):
-        ffi_main, ffi_lib = chelper.get_ffi()
         ffi_lib.trdispatch_stop(self._trdispatch)
         res = [trsync.stop() for trsync in self._trsyncs]
         err_res = [r for r in res if r >= MCU_trsync.REASON_COMMS_TIMEOUT]

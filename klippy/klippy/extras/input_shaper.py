@@ -5,7 +5,7 @@
 #
 # This file may be distributed under the terms of the GNU GPLv3 license.
 import collections
-from .. import chelper
+from ..chelper import ffi as ffi_main, lib as ffi_lib
 from . import shaper_defs
 
 class InputShaperParams:
@@ -66,7 +66,6 @@ class AxisInputShaper:
         self.params.update(gcmd)
         self.n, self.A, self.T = self.params.get_shaper()
     def set_shaper_kinematics(self, sk):
-        ffi_main, ffi_lib = chelper.get_ffi()
         success = ffi_lib.input_shaper_set_shaper_params(
                 sk, self.axis.encode(), self.n, self.A, self.T) == 0
         if not success:
@@ -130,7 +129,6 @@ class InputShaper:
         sk = stepper.get_stepper_kinematics()
         if sk in self.input_shaper_stepper_kinematics:
             return sk
-        ffi_main, ffi_lib = chelper.get_ffi()
         is_sk = ffi_main.gc(ffi_lib.input_shaper_alloc(), ffi_lib.free)
         stepper.set_stepper_kinematics(is_sk)
         res = ffi_lib.input_shaper_set_sk(is_sk, sk)
@@ -145,7 +143,6 @@ class InputShaper:
             # Klipper initialization is not yet completed
             return
         self.toolhead.flush_step_generation()
-        ffi_main, ffi_lib = chelper.get_ffi()
         kin = self.toolhead.get_kinematics()
         for s in kin.get_steppers():
             if s.get_trapq() is None:
@@ -158,7 +155,6 @@ class InputShaper:
         motion_queuing.check_step_generation_scan_windows()
     def _update_input_shaping(self, error=None):
         self.toolhead.flush_step_generation()
-        ffi_main, ffi_lib = chelper.get_ffi()
         kin = self.toolhead.get_kinematics()
         failed_shapers = []
         for s in kin.get_steppers():

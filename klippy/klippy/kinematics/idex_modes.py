@@ -5,7 +5,7 @@
 #
 # This file may be distributed under the terms of the GNU GPLv3 license.
 import collections, logging, math
-from .. import chelper
+from ..chelper import ffi as ffi_main, lib as ffi_lib
 
 INACTIVE = 'INACTIVE'
 PRIMARY = 'PRIMARY'
@@ -59,7 +59,6 @@ class DualCarriages:
                    self.cmd_RESTORE_DUAL_CARRIAGE_STATE,
                    desc=self.cmd_RESTORE_DUAL_CARRIAGE_STATE_help)
     def _init_steppers(self, rails):
-        ffi_main, ffi_lib = chelper.get_ffi()
         self.dc_stepper_kinematics = []
         self.orig_stepper_kinematics = []
         steppers = set()
@@ -334,7 +333,6 @@ class DualCarriagesRail:
     def get_axis_position(self, position):
         return position[self.axis] * self.scale + self.offset
     def apply_transform(self):
-        ffi_main, ffi_lib = chelper.get_ffi()
         for sk in self.sks:
             ffi_lib.dual_carriage_set_transform(
                     sk, self.ENC_AXES[self.axis], self.scale, self.offset)

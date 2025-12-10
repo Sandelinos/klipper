@@ -3,31 +3,8 @@
 # Copyright (C) 2016-2021  Kevin O'Connor <kevin@koconnor.net>
 #
 # This file may be distributed under the terms of the GNU GPLv3 license.
-import os, logging
-import cffi
-
-
-######################################################################
-# c_helper.so compiling
-######################################################################
-
-GCC_CMD = "gcc"
-COMPILE_ARGS = ("-Wall -g -O2 -shared -fPIC"
-                " -flto -fwhole-program -fno-use-linker-plugin"
-                " -o %s %s")
-SSE_FLAGS = "-mfpmath=sse -msse2"
-SOURCE_FILES = [
-    'pyhelper.c', 'serialqueue.c', 'stepcompress.c', 'steppersync.c',
-    'itersolve.c', 'trapq.c', 'pollreactor.c', 'msgblock.c', 'trdispatch.c',
-    'kin_cartesian.c', 'kin_corexy.c', 'kin_corexz.c', 'kin_delta.c',
-    'kin_deltesian.c', 'kin_polar.c', 'kin_rotary_delta.c', 'kin_winch.c',
-    'kin_extruder.c', 'kin_shaper.c', 'kin_idex.c', 'kin_generic.c'
-]
-DEST_LIB = "c_helper.so"
-OTHER_FILES = [
-    'list.h', 'serialqueue.h', 'stepcompress.h', 'steppersync.h',
-    'itersolve.h', 'pyhelper.h', 'trapq.h', 'pollreactor.h', 'msgblock.h'
-]
+from os import path, listdir
+from cffi import FFI
 
 defs_stepcompress = """
     struct pull_history_steps {
@@ -242,110 +219,16 @@ defs_all = [
     defs_kin_generic_cartesian,
 ]
 
-# Update filenames to an absolute path
-def get_abs_files(srcdir, filelist):
-    return [os.path.join(srcdir, fname) for fname in filelist]
+c_source = ""
+c_source_dir = path.join(path.abspath(path.dirname(__file__)), "chelper_source")
+for file in listdir(c_source_dir):
+    if file.endswith(".c"):
+        c_source = c_source + '#include "' + path.join(c_source_dir, file) + '"\n'
 
-# Return the list of file modification times
-def get_mtimes(filelist):
-    out = []
-    for filename in filelist:
-        try:
-            t = os.path.getmtime(filename)
-        except os.error:
-            continue
-        out.append(t)
-    return out
-
-# Check if the code needs to be compiled
-def check_build_code(sources, target):
-    src_times = get_mtimes(sources)
-    obj_times = get_mtimes([target])
-    return not obj_times or max(src_times) > min(obj_times)
-
-# Check if the current gcc version supports a particular command-line option
-def check_gcc_option(option):
-    cmd = "%s %s -S -o /dev/null -xc /dev/null > /dev/null 2>&1" % (
-        GCC_CMD, option)
-    res = os.system(cmd)
-    return res == 0
-
-# Check if the current gcc version supports a particular command-line option
-def do_build_code(cmd):
-    res = os.system(cmd)
-    if res:
-        msg = "Unable to build C code module (error=%s)" % (res,)
-        logging.error(msg)
-        raise Exception(msg)
-
-# Build the main c_helper.so c code library
-def check_build_c_library():
-    srcdir = os.path.dirname(os.path.realpath(__file__))
-    srcfiles = get_abs_files(srcdir, SOURCE_FILES)
-    ofiles = get_abs_files(srcdir, OTHER_FILES)
-    destlib = get_abs_files(srcdir, [DEST_LIB])[0]
-    if not check_build_code(srcfiles+ofiles+[__file__], destlib):
-        # Code already built
-        return destlib
-    # Select command line options
-    if check_gcc_option(SSE_FLAGS):
-        cmd = "%s %s %s" % (GCC_CMD, SSE_FLAGS, COMPILE_ARGS)
-    else:
-        cmd = "%s %s" % (GCC_CMD, COMPILE_ARGS)
-    # Invoke compiler
-    logging.info("Building C code module %s", DEST_LIB)
-    tempdestlib = get_abs_files(srcdir, ["_temp_" + DEST_LIB])[0]
-    do_build_code(cmd % (tempdestlib, ' '.join(srcfiles)))
-    # Rename from temporary file to final file name
-    os.rename(tempdestlib, destlib)
-    return destlib
-
-FFI_main = None
-FFI_lib = None
-pyhelper_logging_callback = None
-
-# Helper invoked from C errorf() code to log errors
-def logging_callback(msg):
-    logging.error(FFI_main.string(msg))
-
-# Return the Foreign Function Interface api to the caller
-def get_ffi():
-    global FFI_main, FFI_lib, pyhelper_logging_callback
-    if FFI_lib is None:
-        # Check if library needs to be built, and build if so
-        destlib = check_build_c_library()
-        # Open library
-        FFI_main = cffi.FFI()
-        for d in defs_all:
-            FFI_main.cdef(d)
-        FFI_lib = FFI_main.dlopen(destlib)
-        # Setup error logging
-        pyhelper_logging_callback = FFI_main.callback("void func(const char *)",
-                                                      logging_callback)
-        FFI_lib.set_python_logging_callback(pyhelper_logging_callback)
-    return FFI_main, FFI_lib
-
-
-######################################################################
-# hub-ctrl hub power controller
-######################################################################
-
-HC_COMPILE_CMD = "gcc -Wall -g -O2 -o %s %s -lusb"
-HC_SOURCE_FILES = ['hub-ctrl.c']
-HC_SOURCE_DIR = '../../lib/hub-ctrl'
-HC_TARGET = "hub-ctrl"
-HC_CMD = "sudo %s/hub-ctrl -h 0 -P 2 -p %d"
-
-def run_hub_ctrl(enable_power):
-    srcdir = os.path.dirname(os.path.realpath(__file__))
-    hubdir = os.path.join(srcdir, HC_SOURCE_DIR)
-    srcfiles = get_abs_files(hubdir, HC_SOURCE_FILES)
-    destlib = get_abs_files(hubdir, [HC_TARGET])[0]
-    if check_build_code(srcfiles, destlib):
-        logging.info("Building C code module %s", HC_TARGET)
-        do_build_code(HC_COMPILE_CMD % (destlib, ' '.join(srcfiles)))
-    os.system(HC_CMD % (hubdir, enable_power))
-
+ffibuilder = FFI()
+for cdef in defs_all:
+    ffibuilder.cdef(cdef)
+ffibuilder.set_source("klippy.chelper", c_source)
 
 if __name__ == '__main__':
-    get_ffi()
+    ffibuilder.compile(verbose=True)

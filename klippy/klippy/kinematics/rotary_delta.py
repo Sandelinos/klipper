@@ -4,7 +4,8 @@
 #
 # This file may be distributed under the terms of the GNU GPLv3 license.
 import math, logging
-from .. import stepper, mathutil, chelper
+from .. import stepper, mathutil
+from ..chelper import ffi as ffi_main, lib as ffi_lib
 
 class RotaryDeltaKinematics:
     def __init__(self, toolhead, config):
@@ -141,7 +142,6 @@ class RotaryDeltaCalibration:
         self.endstops = endstops
         self.stepdists = stepdists
         # Calculate the absolute angle of each endstop
-        ffi_main, self.ffi_lib = chelper.get_ffi()
         self.sks = [ffi_main.gc(self.ffi_lib.rotary_delta_stepper_alloc(
             shoulder_radius, shoulder_height, math.radians(a), ua, la),
                                 self.ffi_lib.free)

@@ -7,6 +7,7 @@ import logging, threading, os
 import serial
 
 from . import msgproto, chelper, util
+from .chelper import ffi as ffi_main, lib as ffi_lib
 
 class error(Exception):
     pass
@@ -24,7 +25,8 @@ class SerialReader:
         self.serial_dev = None
         self.msgparser = msgproto.MessageParser(warn_prefix=self.warn_prefix)
         # C interface
-        self.ffi_main, self.ffi_lib = chelper.get_ffi()
+        self.ffi_main = ffi_main
+        self.ffi_lib = ffi_lib
         self.serialqueue = None
         self.default_cmd_queue = self.alloc_command_queue()
         self.stats_buf = self.ffi_main.new('char[4096]')

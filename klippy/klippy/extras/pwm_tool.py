@@ -3,7 +3,7 @@
 # Copyright (C) 2017-2025  Kevin O'Connor <kevin@koconnor.net>
 #
 # This file may be distributed under the terms of the GNU GPLv3 license.
-from .. import chelper
+from ..chelper import lib as ffi_lib
 
 class error(Exception):
     pass
@@ -20,7 +20,6 @@ class MCU_queued_pwm:
         self._motion_queuing = printer.load_object(config, 'motion_queuing')
         self._syncemitter = self._motion_queuing.allocate_syncemitter(
             mcu, sname, alloc_stepcompress=False)
-        ffi_main, ffi_lib = chelper.get_ffi()
         self._syncemitter_queue_msg = ffi_lib.syncemitter_queue_msg
         mcu.register_config_callback(self._build_config)
         self._pin = pin_params['pin']

@@ -1,3 +1,7 @@
+[build-system]
+requires = ["setuptools", "cffi"]
+build-backend = "setuptools.build_meta"
+
 [project]
 name = "klippy"
 version = "0.13.0"

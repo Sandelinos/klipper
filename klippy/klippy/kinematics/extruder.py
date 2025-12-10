@@ -4,7 +4,8 @@
 #
 # This file may be distributed under the terms of the GNU GPLv3 license.
 import math, logging
-from .. import stepper, chelper
+from .. import stepper
+from ..chelper import ffi as ffi_main, lib as ffi_lib
 
 class ExtruderStepper:
     def __init__(self, config):
@@ -16,7 +17,6 @@ class ExtruderStepper:
                 'pressure_advance_smooth_time', 0.040, above=0., maxval=.200)
         # Setup stepper
         self.stepper = stepper.PrinterStepper(config)
-        ffi_main, ffi_lib = chelper.get_ffi()
         self.sk_extruder = ffi_main.gc(ffi_lib.extruder_stepper_alloc(),
                                        ffi_lib.extruder_stepper_free)
         self.stepper.set_stepper_kinematics(self.sk_extruder)
@@ -72,7 +72,6 @@ class ExtruderStepper:
         if not pressure_advance:
             new_smooth_time = 0.
         toolhead = self.printer.lookup_object("toolhead")
-        ffi_main, ffi_lib = chelper.get_ffi()
         espa = ffi_lib.extruder_set_pressure_advance
         if new_smooth_time != old_smooth_time:
             # Need full kinematic flush to change the smooth time

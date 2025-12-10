@@ -4,7 +4,7 @@
 #
 # This file may be distributed under the terms of the GNU GPLv3 license.
 import logging
-from .. import chelper
+from ..chelper import ffi as ffi_main, lib as ffi_lib
 
 BGFLUSH_LOW_TIME = 0.200
 BGFLUSH_HIGH_TIME = 0.400
@@ -26,7 +26,6 @@ class PrinterMotionQueuing:
         self.reactor = printer.get_reactor()
         # C trapq tracking
         self.trapqs = []
-        ffi_main, ffi_lib = chelper.get_ffi()
         self.trapq_finalize_moves = ffi_lib.trapq_finalize_moves
         # C steppersync tracking
         self.steppersyncmgr = ffi_main.gc(ffi_lib.steppersyncmgr_alloc(),
@@ -60,7 +59,6 @@ class PrinterMotionQueuing:
         printer.register_event_handler("klippy:shutdown", self._handle_shutdown)
     # C trapq tracking
     def allocate_trapq(self):
-        ffi_main, ffi_lib = chelper.get_ffi()
         trapq = ffi_main.gc(ffi_lib.trapq_alloc(), ffi_lib.trapq_free)
         self.trapqs.append(trapq)
         return trapq
@@ -68,27 +66,23 @@ class PrinterMotionQueuing:
         # Expire any remaining movement in the trapq (force to history list)
         self.trapq_finalize_moves(trapq, self.reactor.NEVER, 0.)
     def lookup_trapq_append(self):
-        ffi_main, ffi_lib = chelper.get_ffi()
         return ffi_lib.trapq_append
     # C steppersync tracking
     def _lookup_steppersync(self, mcu):
         for ss_mcu, ss in self.steppersyncs:
             if ss_mcu is mcu:
                 return ss
-        ffi_main, ffi_lib = chelper.get_ffi()
         ss = ffi_lib.steppersyncmgr_alloc_steppersync(self.steppersyncmgr)
         self.steppersyncs.append((mcu, ss))
         return ss
     def allocate_syncemitter(self, mcu, name, alloc_stepcompress=True):
         name = name.encode("utf-8")[:15]
         ss = self._lookup_steppersync(mcu)
-        ffi_main, ffi_lib = chelper.get_ffi()
         se = ffi_lib.steppersync_alloc_syncemitter(ss, name, alloc_stepcompress)
         self.syncemitters.append(se)
         return se
     def setup_mcu_movequeue(self, mcu, serialqueue, move_count):
         # Setup steppersync object for the mcu's main movequeue
-        ffi_main, ffi_lib = chelper.get_ffi()
         ss = self._lookup_steppersync(mcu)
         ffi_lib.steppersync_setup_movequeue(ss, serialqueue, move_count)
         mcu_freq = float(mcu.seconds_to_clock(1.))
@@ -96,7 +90,6 @@ class PrinterMotionQueuing:
     def stats(self, eventtime):
         # Globally calibrate mcu clocks (and step generation clocks)
         sync_time = self.last_step_gen_time
-        ffi_main, ffi_lib = chelper.get_ffi()
         for mcu, ss in self.steppersyncs:
             offset, freq = mcu.calibrate_clock(sync_time, eventtime)
             ffi_lib.steppersync_set_time(ss, offset, freq)
@@ -119,7 +112,6 @@ class PrinterMotionQueuing:
     def get_kin_flush_delay(self):
         return self.kin_flush_delay
     def check_step_generation_scan_windows(self):
-        ffi_main, ffi_lib = chelper.get_ffi()
         kin_flush_delay = SDS_CHECK_TIME
         for se in self.syncemitters:
             sk = ffi_lib.syncemitter_get_stepper_kinematics(se)

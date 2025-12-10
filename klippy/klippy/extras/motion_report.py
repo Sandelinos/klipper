@@ -4,7 +4,7 @@
 #
 # This file may be distributed under the terms of the GNU GPLv3 license.
 import logging
-from .. import chelper
+from ..chelper import ffi as ffi_main, lib as ffi_lib
 from . import bulk_sensor
 
 # Extract stepper queue_step messages
@@ -84,7 +84,6 @@ class DumpTrapQ:
         self.batch_bulk.add_mux_endpoint("motion_report/dump_trapq",
                                          "name", name, api_resp)
     def extract_trapq(self, start_time, end_time):
-        ffi_main, ffi_lib = chelper.get_ffi()
         res = []
         while 1:
             data = ffi_main.new('struct pull_move[128]')
@@ -109,7 +108,6 @@ class DumpTrapQ:
                           m.start_x, m.start_y, m.start_z, m.x_r, m.y_r, m.z_r))
         logging.info('\n'.join(out))
     def get_trapq_position(self, print_time):
-        ffi_main, ffi_lib = chelper.get_ffi()
         data = ffi_main.new('struct pull_move[1]')
         count = ffi_lib.trapq_extract_old(self.trapq, data, 1, 0., print_time)
         if not count:

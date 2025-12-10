@@ -5,7 +5,8 @@
 # This file may be distributed under the terms of the GNU GPLv3 license.
 import os, gc, select, math, time, logging, queue
 import greenlet
-from . import chelper, util
+from . import util
+from .chelper import lib as ffi_lib
 
 _NOW = 0.
 _NEVER = 9999999999999999.
@@ -107,7 +108,7 @@ class SelectReactor:
     def __init__(self, gc_checking=False):
         # Main code
         self._process = False
-        self.monotonic = chelper.get_ffi()[1].get_monotonic
+        self.monotonic = ffi_lib.get_monotonic
         # Python garbage collection
         self._check_gc = gc_checking
         self._last_gc_times = [0., 0., 0.]

@@ -5,7 +5,8 @@
 # This file may be distributed under the terms of the GNU GPLv3 license.
 
 import logging, re
-from .. import stepper, chelper
+from .. import stepper
+from ..chelper import lib as ffi_lib
 
 def parse_carriages_string(carriages_str, printer_carriages, parse_error):
     nxt = 0
@@ -75,7 +76,6 @@ class KinematicStepper:
         return self.carriages
     def update_kin_coeffs(self, kin_coeffs):
         self.kin_coeffs = kin_coeffs
-        ffi_main, ffi_lib = chelper.get_ffi()
         ffi_lib.generic_cartesian_stepper_set_coeffs(
                 self.stepper_sk, kin_coeffs[0], kin_coeffs[1], kin_coeffs[2])
     def update_carriages(self, carriages_str, printer_carriages, report_error):

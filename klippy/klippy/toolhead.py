@@ -4,8 +4,9 @@
 #
 # This file may be distributed under the terms of the GNU GPLv3 license.
 import math, logging, importlib
-from . import mcu, chelper
-from .kinematics import extruder
+from . import mcu
+from .chelper import lib as ffi_lib
+from .kinematics import extruder as kinematics_extruder
 
 # Common suffixes: _d is distance (in mm), _v is velocity (in
 #   mm/second), _v2 is velocity squared (mm^2/s^2), _t is time (in
@@ -236,13 +237,13 @@ class ToolHead:
         # Create kinematics class
         gcode = self.printer.lookup_object('gcode')
         self.Coord = gcode.Coord
-        extruder = kinematics.extruder.DummyExtruder(self.printer)
+        extruder = kinematics_extruder.DummyExtruder(self.printer)
         self.extra_axes = [extruder]
         self.extra_axes_status = {}
         self._build_extra_axes_status()
         kin_name = config.get('kinematics')
         try:
-            mod = importlib.import_module('kinematics.' + kin_name)
+            mod = importlib.import_module(__package__ + '.kinematics.' + kin_name)
             self.kin = mod.load_kinematics(self, config)
         except config.error as e:
             raise
@@ -383,7 +384,6 @@ class ToolHead:
         return list(self.commanded_pos)
     def set_position(self, newpos, homing_axes=""):
         self.flush_step_generation()
-        ffi_main, ffi_lib = chelper.get_ffi()
         ffi_lib.trapq_set_position(self.trapq, self.print_time,
                                    newpos[0], newpos[1], newpos[2])
         self.commanded_pos[:3] = newpos[:3]
@@ -607,7 +607,7 @@ def add_printer_objects(config):
     printer.add_object('toolhead', ToolHead(config))
     ToolHeadCommandHelper(config)
     # Load default extruder objects
-    kinematics.extruder.add_printer_objects(config)
+    kinematics_extruder.add_printer_objects(config)
     # Load some default modules
     modules = ["gcode_move", "homing", "idle_timeout", "statistics",
                "manual_probe", "tuning_tower", "garbage_collection"]
