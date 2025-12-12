@@ -24,3 +24,10 @@ dependencies = [
 
 [project.scripts]
 klippy = "klippy.klippy:main"
+
+[tool.setuptools.package-data]
+klippy = [
+  "extras/temperature_sensors.cfg",
+  "extras/display/menu.cfg",
+  "extras/display/display.cfg",
+]
